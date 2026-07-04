@@ -1197,6 +1197,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dataContent.innerHTML = `
             <div class="data-close">✕</div>
+            
             <div class="di-title">[ מסקנות ]</div>
             <div class="di-sub">מה מספרים ${d.N} הרגעים שנאספו לאורך רחוב יפו</div>
 
