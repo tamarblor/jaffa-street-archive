@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ארכיון רחוב יפו</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="intro-video-wrapper">
+        <video id="intro-video" muted playsinline autoplay>
+            <source src="mov/intro.mov" type="video/mp4">
+        </video>
+        <img src="svgs/logo-white.svg" alt="logo" id="intro-logo">
+    </div>
+
+    <svg style="position: absolute; width: 0; height: 0;" aria-hidden="true" focusable="false">
+        <defs>
+            <filter id="liquefy">
+                <feTurbulence type="turbulence" baseFrequency="0.01 0.05" numOctaves="1" result="noise" seed="2">
+                    <animate attributeName="baseFrequency" dur="8s" values="0.01 0.05;0.03 0.1;0.01 0.05" repeatCount="indefinite" />
+                </feTurbulence>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+        </defs>
+    </svg>
+
+    <header>
+        <img src="svgs/logo.svg" alt="לוגו רחוב יפו" class="logo-img">
+        <div class="nav-group">
+            <div class="theme-toggle" id="themeToggle" title="מצב לילה / יום"></div>
+            <div class="refresh-btn" id="refreshBtn" title="רענון">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor">
+                    <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                </svg>
+            </div>
+            <div class="nav-item dropdown-container emotions-dropdown">
+                <span class="nav-title">[ רגשות ]</span>
+                <div class="dropdown-menu">
+                    <ul>
+                        <li>כעס</li>
+                        <li>בוז</li>
+                        <li>גועל (או סלידה)</li>
+                        <li>הנאה</li>
+                        <li>פחד</li>
+                        <li>עצב</li>
+                        <li>הפתעה</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="nav-item dropdown-container">
+                <span class="nav-title">[ לארגן סיפורים לפי ]</span>
+                <div class="dropdown-menu">
+                    <ul>
+                        <li>מיקום גיאוגרפי</li>
+                        <li>ציר זמן</li>
+                        <li>ארכיון</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="search-wrapper">
+                <span>[</span>
+                <input type="text" id="searchInput" placeholder="חיפוש חופשי" autocomplete="off">
+                <span class="search-icon">⌕</span>
+                <span>]</span>
+            </div>
+
+            <div class="data-btn" id="dataBtn" title="נתונים ומסקנות">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="currentColor">
+                    <rect x="3" y="12" width="4" height="9" rx="1"/>
+                    <rect x="10" y="7" width="4" height="14" rx="1"/>
+                    <rect x="17" y="3" width="4" height="18" rx="1"/>
+                </svg>
+            </div>
+        </div>
+    </header>
+
+    <main id="archive-container"></main>
+
+    <footer>
+        <div class="filters">
+            <ul>
+                <li>רק קולות</li>
+                <li>רק תמונות</li>
+                <li>רק מילים</li>
+            </ul>
+        </div>
+        <div class="add-story">[ יש לי סיפור + ]</div>
+    </footer>
+
+    <div id="fullscreen-overlay">
+        <div class="fs-arrow fs-prev">[‹]</div>
+        <img src="" id="fullscreen-img" alt="">
+        <div id="fullscreen-text"></div>
+        <div class="fs-arrow fs-next">[›]</div>
+    </div>
+
+    <!-- חלון סיפור מלא (נפתח בלחיצה על סיפור) -->
+    <div id="story-overlay">
+        <div class="so-close">✕</div>
+        <div class="so-arrow so-prev">[‹]</div>
+        <div class="so-content"></div>
+        <div class="so-arrow so-next">[›]</div>
+    </div>
+
+    <!-- חלון "רק קולות" — עדיין בבנייה -->
+    <div id="soon-overlay">
+        <div class="about-box">
+            <div class="about-close" id="soon-close">✕</div>
+            <div class="about-title">[ רק קולות ]</div>
+            <div class="about-text">
+                <p>ששש… הקולות של רחוב יפו עדיין מתביישים מאחורי הקלעים.</p>
+                <p>החלק הזה עוד בבנייה — בקרוב תוכלו לשמוע את הרחוב. בינתיים, יש תמונות ומילים.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- חלון נתונים ומסקנות -->
+    <div id="data-overlay">
+        <div id="data-content"></div>
+    </div>
+
+    <!-- חלון אודות (נפתח בלחיצה על הלוגו) -->
+    <div id="about-overlay">
+        <div class="about-box">
+            <div class="about-close">✕</div>
+            <div class="about-title">[ זהות מקום ]</div>
+            <div class="about-sub">ארכיון רחוב יפו</div>
+            <div class="about-text">
+                <p>רחוב יפו הוא לא רק כביש. הוא קו של זיכרון שחוצה את העיר — ובכל נקודה עליו מישהו עצר, פחד, צחק, התאהב או נבהל.</p>
+                <p>הארכיון אוסף את הרגעים הקטנים שקרו לאורך הרחוב, וממפה אותם לפי המקום שבו קרו והרגש שהשאירו אחריהם.</p>
+                <p>כל מדבקת צבע היא רגש, כל נקודה היא רגע, וכל רגע הוא חלק מהזהות של המקום הזה.</p>
+                <p>זהו ארכיון חי — הוא גדל בכל פעם שמישהו/י מוסיף/ה את הרגע שלו/ה.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-story-overlay">
+        <form id="add-story-form" autocomplete="off">
+            <div class="add-close">✕</div>
+            <div class="add-title">[ יש לי סיפור + ]</div>
+            <p class="add-sub">ספרו על רגע שקרה לכם/ן ברחוב יפו — והוא יצטרף לארכיון.</p>
+
+            <label class="af-field"><span>שם מלא</span><input type="text" name="name" required></label>
+
+            <label class="af-field"><span>גיל</span><input type="text" name="age"></label>
+
+            <label class="af-field"><span>באיזה שנה קרה לי הסיפור</span><input type="text" name="year"></label>
+
+            <label class="af-field"><span>איפה זה קרה לי ברחוב יפו</span><input type="text" name="location"></label>
+
+            <label class="af-field"><span>הסיפור</span><textarea name="text" rows="5" required></textarea></label>
+
+            <div class="af-field">
+                <span>רגשות</span>
+                <div id="emo-picker"></div>
+            </div>
+
+            <div class="af-field">
+                <span>תמונה או סרטון</span>
+                <label class="af-file-btn">[ בחירת קובץ + ]<input type="file" name="media" accept="image/*,video/*"></label>
+                <span class="af-file-name"></span>
+            </div>
+
+            <button type="submit" class="af-submit">הוספה לארכיון</button>
+        </form>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
